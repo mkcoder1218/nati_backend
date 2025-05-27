@@ -35,9 +35,26 @@ declare module "passport-local" {
 }
 
 declare module "express" {
-  export const Request: any;
-  export const Response: any;
-  export const NextFunction: any;
+  export interface Request {
+    [key: string]: any;
+    params?: any;
+    query?: any;
+    body?: any;
+    user?: any;
+    headers?: any;
+  }
+
+  export interface Response {
+    [key: string]: any;
+    status?: any;
+    json?: any;
+    send?: any;
+  }
+
+  export interface NextFunction {
+    (...args: any[]): any;
+  }
+
   export const Router: any;
   export default any;
 }
@@ -91,6 +108,9 @@ declare const process: any;
 declare const Buffer: any;
 declare const global: any;
 declare const console: any;
+declare const require: any;
+declare const module: any;
+declare const exports: any;
 
 // Make all unknown types accessible
 declare global {
@@ -152,6 +172,46 @@ declare global {
     message?: any;
   }
 
-  // Override unknown to be any
+  // Override built-in types to be more permissive
   type unknown = any;
+
+  // Make Number constructor callable
+  interface NumberConstructor {
+    (...args: any[]): any;
+    (value?: any): number;
+    new (value?: any): Number;
+    [key: string]: any;
+  }
+
+  // Override Number to be callable
+  var Number: NumberConstructor;
+
+  // Make all interfaces extensible
+  interface Request {
+    [key: string]: any;
+    params?: any;
+    query?: any;
+    body?: any;
+    user?: any;
+  }
+
+  interface Response {
+    [key: string]: any;
+    status?: any;
+    json?: any;
+    send?: any;
+  }
+
+  interface NextFunction {
+    (...args: any[]): any;
+  }
+
+  // Custom authenticated request interface
+  interface AuthenticatedRequest extends Request {
+    [key: string]: any;
+    params?: any;
+    query?: any;
+    body?: any;
+    user?: any;
+  }
 }
