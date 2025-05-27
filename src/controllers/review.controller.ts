@@ -586,3 +586,35 @@ export const addAdminResponse = async (req: Request, res: Response) => {
     });
   }
 };
+
+// Get public approved reviews for browsing
+export const getPublicReviews = async (req: Request, res: Response) => {
+  try {
+    const limit = parseInt(req.query.limit as string) || 50;
+    const offset = parseInt(req.query.offset as string) || 0;
+    const sortBy = (req.query.sortBy as string) || "created_at";
+    const sortOrder = (req.query.sortOrder as string) || "desc";
+
+    // Get public approved reviews with user and office details
+    const reviews = await ReviewModel.getPublicReviews(
+      limit,
+      offset,
+      sortBy,
+      sortOrder
+    );
+
+    return res.status(200).json({
+      status: "success",
+      data: {
+        reviews,
+        count: reviews.length,
+      },
+    });
+  } catch (error) {
+    console.error("Error in getPublicReviews:", error);
+    return res.status(500).json({
+      status: "error",
+      message: "Internal server error",
+    });
+  }
+};

@@ -503,6 +503,83 @@ class ReviewModel {
 
     return parseInt(result.rows[0]?.review_count) || 0;
   }
+
+  async getPublicReviews(
+    limit: number = 50,
+    offset: number = 0,
+    sortBy: string = "created_at",
+    sortOrder: string = "desc"
+  ): Promise<any[]> {
+    // Validate sort parameters to prevent SQL injection
+    const validSortColumns = ["created_at", "rating", "updated_at"];
+    const validSortOrders = ["asc", "desc"];
+
+    const safeSortBy = validSortColumns.includes(sortBy)
+      ? sortBy
+      : "created_at";
+    const safeSortOrder = validSortOrders.includes(sortOrder.toLowerCase())
+      ? sortOrder.toLowerCase()
+      : "desc";
+
+    // Build the query with safe parameters
+    let query = `SELECT
+      r.review_id,
+      r.user_id,
+      r.office_id,
+      r.rating,
+      r.comment,
+      r.is_anonymous,
+      r.created_at,
+      r.updated_at,
+      r.status,
+      CASE
+        WHEN r.is_anonymous = true THEN NULL
+        ELSE u.full_name
+      END as user_name,
+      o.name as office_name,
+      COALESCE(v_helpful.helpful_count, 0) as upvote_count,
+      COALESCE(v_not_helpful.not_helpful_count, 0) as downvote_count,
+      COALESCE(v_flag.flag_count, 0) as flag_count
+     FROM reviews r
+     LEFT JOIN users u ON r.user_id = u.user_id
+     LEFT JOIN offices o ON r.office_id = o.office_id
+     LEFT JOIN (
+       SELECT review_id, COUNT(*) as helpful_count
+       FROM votes
+       WHERE vote_type = 'helpful'
+       GROUP BY review_id
+     ) v_helpful ON r.review_id = v_helpful.review_id
+     LEFT JOIN (
+       SELECT review_id, COUNT(*) as not_helpful_count
+       FROM votes
+       WHERE vote_type = 'not_helpful'
+       GROUP BY review_id
+     ) v_not_helpful ON r.review_id = v_not_helpful.review_id
+     LEFT JOIN (
+       SELECT review_id, COUNT(*) as flag_count
+       FROM votes
+       WHERE vote_type = 'flag'
+       GROUP BY review_id
+     ) v_flag ON r.review_id = v_flag.review_id
+     WHERE r.status = 'approved'
+     ORDER BY `;
+
+    // Add the safe sort column and order
+    if (safeSortBy === "rating") {
+      query += "r.rating ";
+    } else if (safeSortBy === "updated_at") {
+      query += "r.updated_at ";
+    } else {
+      query += "r.created_at ";
+    }
+
+    query += safeSortOrder === "asc" ? "ASC" : "DESC";
+    query += " LIMIT $1 OFFSET $2";
+
+    const result = await pool.query(query, [limit, offset]);
+
+    return result.rows;
+  }
 }
 
 export default new ReviewModel();

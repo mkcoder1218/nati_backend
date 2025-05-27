@@ -128,11 +128,19 @@ export const getVotesByReview = async (req: Request, res: Response) => {
     // Get vote counts by type
     const voteCounts = await VoteModel.getVoteCountsByReview(reviewId);
 
+    // Check if user is authenticated to get their vote
+    let userVote = null;
+    if ((req as any).user) {
+      const userId = (req as any).user.user_id;
+      userVote = await VoteModel.findByUserAndReview(userId, reviewId);
+    }
+
     return res.status(200).json({
       status: "success",
       data: {
         votes,
         counts: voteCounts,
+        user_vote: userVote,
       },
     });
   } catch (error) {
@@ -205,6 +213,52 @@ export const getVoteStatistics = async (req: Request, res: Response) => {
     });
   } catch (error) {
     console.error("Error in getVoteStatistics:", error);
+    return res.status(500).json({
+      status: "error",
+      message: "Internal server error",
+    });
+  }
+};
+
+// Get reviews that user has upvoted
+export const getUserUpvotedReviews = async (req: Request, res: Response) => {
+  try {
+    const userId = (req as any).user.user_id;
+
+    // Get reviews that user has upvoted
+    const reviews = await VoteModel.getUserUpvotedReviews(userId);
+
+    return res.status(200).json({
+      status: "success",
+      data: {
+        reviews,
+      },
+    });
+  } catch (error) {
+    console.error("Error in getUserUpvotedReviews:", error);
+    return res.status(500).json({
+      status: "error",
+      message: "Internal server error",
+    });
+  }
+};
+
+// Get reviews that user has downvoted
+export const getUserDownvotedReviews = async (req: Request, res: Response) => {
+  try {
+    const userId = (req as any).user.user_id;
+
+    // Get reviews that user has downvoted
+    const reviews = await VoteModel.getUserDownvotedReviews(userId);
+
+    return res.status(200).json({
+      status: "success",
+      data: {
+        reviews,
+      },
+    });
+  } catch (error) {
+    console.error("Error in getUserDownvotedReviews:", error);
     return res.status(500).json({
       status: "error",
       message: "Internal server error",

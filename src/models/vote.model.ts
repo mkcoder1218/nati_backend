@@ -342,6 +342,108 @@ class VoteModel {
 
     return stats;
   }
+
+  // Get reviews that user has upvoted (filtered by official's office)
+  async getUserUpvotedReviews(userId: string): Promise<any[]> {
+    // First get the user's office_id if they are an official
+    const userResult = await pool.query(
+      `SELECT office_id, role FROM users WHERE user_id = $1`,
+      [userId]
+    );
+
+    if (userResult.rows.length === 0) {
+      return [];
+    }
+
+    const user = userResult.rows[0];
+    let whereClause = `v.user_id = $1 AND v.vote_type = 'helpful' AND r.status = 'approved'`;
+    let queryParams = [userId];
+
+    // If user is an official, filter by their assigned office
+    if (user.role === "official" && user.office_id) {
+      whereClause += ` AND r.office_id = $2`;
+      queryParams.push(user.office_id);
+    }
+
+    const result = await pool.query(
+      `SELECT
+        r.review_id,
+        r.user_id,
+        r.office_id,
+        r.rating,
+        r.comment,
+        r.is_anonymous,
+        r.created_at,
+        r.updated_at,
+        r.status,
+        CASE
+          WHEN r.is_anonymous = true THEN NULL
+          ELSE u.full_name
+        END as user_name,
+        o.name as office_name,
+        v.created_at as voted_at
+       FROM votes v
+       JOIN reviews r ON v.review_id = r.review_id
+       LEFT JOIN users u ON r.user_id = u.user_id
+       LEFT JOIN offices o ON r.office_id = o.office_id
+       WHERE ${whereClause}
+       ORDER BY v.created_at DESC`,
+      queryParams
+    );
+
+    return result.rows;
+  }
+
+  // Get reviews that user has downvoted (filtered by official's office)
+  async getUserDownvotedReviews(userId: string): Promise<any[]> {
+    // First get the user's office_id if they are an official
+    const userResult = await pool.query(
+      `SELECT office_id, role FROM users WHERE user_id = $1`,
+      [userId]
+    );
+
+    if (userResult.rows.length === 0) {
+      return [];
+    }
+
+    const user = userResult.rows[0];
+    let whereClause = `v.user_id = $1 AND v.vote_type = 'not_helpful' AND r.status = 'approved'`;
+    let queryParams = [userId];
+
+    // If user is an official, filter by their assigned office
+    if (user.role === "official" && user.office_id) {
+      whereClause += ` AND r.office_id = $2`;
+      queryParams.push(user.office_id);
+    }
+
+    const result = await pool.query(
+      `SELECT
+        r.review_id,
+        r.user_id,
+        r.office_id,
+        r.rating,
+        r.comment,
+        r.is_anonymous,
+        r.created_at,
+        r.updated_at,
+        r.status,
+        CASE
+          WHEN r.is_anonymous = true THEN NULL
+          ELSE u.full_name
+        END as user_name,
+        o.name as office_name,
+        v.created_at as voted_at
+       FROM votes v
+       JOIN reviews r ON v.review_id = r.review_id
+       LEFT JOIN users u ON r.user_id = u.user_id
+       LEFT JOIN offices o ON r.office_id = o.office_id
+       WHERE ${whereClause}
+       ORDER BY v.created_at DESC`,
+      queryParams
+    );
+
+    return result.rows;
+  }
 }
 
 export default new VoteModel();

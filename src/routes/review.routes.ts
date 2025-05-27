@@ -10,6 +10,7 @@ import {
   deleteReview,
   flagReview,
   addAdminResponse,
+  getPublicReviews,
 } from "../controllers/review.controller";
 import {
   authenticateJWT,
@@ -22,6 +23,9 @@ const router = express.Router();
 
 // Get all reviews (admin/official only)
 router.get("/", authenticateJWT, isOfficial, getAllReviews);
+
+// Get public approved reviews (for browsing)
+router.get("/public/browse", getPublicReviews);
 
 // Get reviews by office (public)
 router.get("/office/:officeId", getReviewsByOffice);
