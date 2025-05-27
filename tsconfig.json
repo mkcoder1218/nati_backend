@@ -29,9 +29,28 @@
     "allowJs": true,
     "checkJs": false,
     "noErrorTruncation": true,
-    "allowUmdGlobalAccess": true
+    "allowUmdGlobalAccess": true,
+    "moduleResolution": "node",
+    "types": ["node"],
+    "typeRoots": ["node_modules/@types"],
+    "noResolve": false,
+    "noLib": false,
+    "declaration": false,
+    "declarationMap": false,
+    "sourceMap": false,
+    "removeComments": false,
+    "noEmit": false,
+    "noEmitOnError": false,
+    "preserveConstEnums": true,
+    "suppressOutputPathCheck": true
   },
   "include": ["src/**/*"],
   "exclude": ["node_modules", "**/*.test.ts"],
-  "compileOnSave": false
+  "compileOnSave": false,
+  "ts-node": {
+    "transpileOnly": true,
+    "compilerOptions": {
+      "module": "commonjs"
+    }
+  }
 }
