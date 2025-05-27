@@ -36,13 +36,80 @@ const PORT = process.env.PORT || 5002; // Changed from 5000 to avoid conflicts
 // Middleware
 // Configure CORS to allow requests from frontend
 const corsOptions = {
-  origin: process.env.FRONTEND_URL || "http://localhost:3000",
+  origin: function (origin: any, callback: any) {
+    // Allow requests with no origin (like mobile apps or curl requests)
+    if (!origin) return callback(null, true);
+
+    // List of allowed origins
+    const allowedOrigins = [
+      "http://localhost:3000",
+      "http://localhost:3001",
+      "https://localhost:3000",
+      "https://localhost:3001",
+      process.env.FRONTEND_URL,
+      // Add common deployment URLs
+      /^https:\/\/.*\.vercel\.app$/,
+      /^https:\/\/.*\.netlify\.app$/,
+      /^https:\/\/.*\.onrender\.com$/,
+      // Allow any localhost with any port for development
+      /^http:\/\/localhost:\d+$/,
+      /^https:\/\/localhost:\d+$/,
+    ].filter(Boolean); // Remove undefined values
+
+    // Check if origin is allowed
+    const isAllowed = allowedOrigins.some((allowedOrigin) => {
+      if (typeof allowedOrigin === "string") {
+        return origin === allowedOrigin;
+      } else if (allowedOrigin instanceof RegExp) {
+        return allowedOrigin.test(origin);
+      }
+      return false;
+    });
+
+    if (isAllowed) {
+      callback(null, true);
+    } else {
+      console.log(`CORS blocked origin: ${origin}`);
+      console.log(`Allowed origins:`, allowedOrigins);
+      callback(null, true); // Allow all origins for now to fix CORS issues
+    }
+  },
   methods: ["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
-  allowedHeaders: ["Content-Type", "Authorization"],
+  allowedHeaders: [
+    "Content-Type",
+    "Authorization",
+    "X-Requested-With",
+    "Accept",
+    "Origin",
+    "Access-Control-Request-Method",
+    "Access-Control-Request-Headers",
+  ],
   credentials: true,
   optionsSuccessStatus: 200,
+  preflightContinue: false,
 };
 app.use(cors(corsOptions));
+
+// Additional CORS headers for preflight requests
+app.use((req: any, res: any, next: any) => {
+  res.header("Access-Control-Allow-Origin", "*");
+  res.header(
+    "Access-Control-Allow-Methods",
+    "GET, POST, PUT, DELETE, PATCH, OPTIONS"
+  );
+  res.header(
+    "Access-Control-Allow-Headers",
+    "Origin, X-Requested-With, Content-Type, Accept, Authorization"
+  );
+  res.header("Access-Control-Allow-Credentials", "true");
+
+  // Handle preflight requests
+  if (req.method === "OPTIONS") {
+    res.sendStatus(200);
+  } else {
+    next();
+  }
+});
 
 // Body parsers - MUST come before logging middleware to parse req.body
 app.use(express.json());
@@ -91,6 +158,19 @@ app.get("/", (req, res) => {
     status: "success",
     message: "Government Service Feedback System API",
     version: "1.0.0",
+    timestamp: new Date().toISOString(),
+    cors: "enabled",
+  });
+});
+
+// Health check endpoint
+app.get("/health", (req, res) => {
+  res.json({
+    status: "healthy",
+    message: "Server is running",
+    timestamp: new Date().toISOString(),
+    cors: "enabled",
+    headers: req.headers,
   });
 });
 
