@@ -22,22 +22,53 @@ export const getDashboardStats = async (
     // Determine which office data to show based on user role and permissions
     let targetOfficeId: string | undefined = requestedOfficeId;
 
-    // If user is an official, they can only see data for their assigned office
-    if (userRole === "official" && userOfficeId) {
-      targetOfficeId = userOfficeId;
-      console.log(
-        `Official user ${userId} accessing data for their office: ${userOfficeId}`
-      );
+    // For officials, automatically use their assigned office (get from their user record)
+    if (userRole === "official") {
+      if (userOfficeId) {
+        targetOfficeId = userOfficeId;
+        console.log(
+          `🏢 Official user ${userId} accessing data for their assigned office: ${userOfficeId}`
+        );
+      } else {
+        // If official doesn't have office_id in JWT, fetch from database
+        console.log(
+          `🔍 Fetching office assignment for official ${userId} from database`
+        );
+        try {
+          const userQuery =
+            "SELECT office_id FROM users WHERE user_id = $1 AND role = 'official'";
+          const userResult = await pool.query(userQuery, [userId]);
+          if (userResult.rows.length > 0 && userResult.rows[0].office_id) {
+            targetOfficeId = userResult.rows[0].office_id;
+            console.log(
+              `✅ Found office assignment for official: ${targetOfficeId}`
+            );
+          } else {
+            console.error(`❌ Official ${userId} has no office assignment`);
+            return res.status(400).json({
+              status: "error",
+              message:
+                "Official user has no office assignment. Please contact administrator.",
+            });
+          }
+        } catch (err) {
+          console.error("Error fetching official's office assignment:", err);
+          return res.status(500).json({
+            status: "error",
+            message: "Error retrieving office assignment",
+          });
+        }
+      }
     } else if (userRole === "admin") {
       // Admins can see data for any office or all offices
       targetOfficeId = requestedOfficeId;
       console.log(
-        `Admin user ${userId} accessing data for office: ${
+        `👑 Admin user ${userId} accessing data for office: ${
           targetOfficeId || "all offices"
         }`
       );
     } else if (!targetOfficeId) {
-      console.log("No office ID specified, showing data for all offices");
+      console.log("📊 No office ID specified, showing data for all offices");
       targetOfficeId = undefined;
     }
 
@@ -57,6 +88,61 @@ export const getDashboardStats = async (
     const topIssues = await getTopIssues(targetOfficeId);
     console.log("Top issues:", topIssues);
 
+    // Get office name for AI analysis
+    let officeName = "All Government Offices";
+    if (targetOfficeId) {
+      try {
+        const officeQuery = "SELECT name FROM offices WHERE office_id = $1";
+        const officeResult = await pool.query(officeQuery, [targetOfficeId]);
+        if (officeResult.rows.length > 0) {
+          officeName = officeResult.rows[0].name;
+        }
+      } catch (err) {
+        console.error("Error fetching office name for AI analysis:", err);
+      }
+    }
+
+    // Generate AI insights for the dashboard
+    console.log("🤖 Generating AI insights for dashboard...");
+    let aiInsights = null;
+    try {
+      const geminiService = await import("../services/gemini.service");
+
+      // Prepare data for AI analysis
+      const dashboardData = {
+        positive: sentimentBreakdown.positive,
+        neutral: sentimentBreakdown.neutral,
+        negative: sentimentBreakdown.negative,
+        total:
+          sentimentBreakdown.positive +
+          sentimentBreakdown.neutral +
+          sentimentBreakdown.negative,
+        topIssues: topIssues.map((issue) => ({
+          issue: issue.issue,
+          count: issue.count,
+          percentage: issue.percentage,
+        })),
+        reviewSamples: [], // We'll keep this empty for dashboard insights
+        dateRange: {
+          startDate: "current month",
+          endDate: "present",
+        },
+        officeName,
+      };
+
+      if (dashboardData.total > 0) {
+        aiInsights = await geminiService.default.analyzeSentimentWithGemini(
+          dashboardData
+        );
+        console.log("✅ AI insights generated successfully for dashboard");
+      } else {
+        console.log("⚠️ No data available for AI analysis");
+      }
+    } catch (aiError) {
+      console.error("❌ Error generating AI insights for dashboard:", aiError);
+      // Continue without AI insights if there's an error
+    }
+
     // Always return real data only - no mock data or sample data creation
     return res.status(200).json({
       status: "success",
@@ -64,6 +150,7 @@ export const getDashboardStats = async (
         office_summary: officeSummary,
         sentiment_breakdown: sentimentBreakdown,
         top_issues: topIssues,
+        ai_insights: aiInsights, // Add AI insights to the response
       },
       real_data: true,
     });
@@ -91,12 +178,49 @@ export const getTimeSeriesData = async (
     // Determine which office data to show based on user role and permissions
     let targetOfficeId: string | undefined = requestedOfficeId;
 
-    // If user is an official, they can only see data for their assigned office
-    if (userRole === "official" && userOfficeId) {
-      targetOfficeId = userOfficeId;
+    // For officials, automatically use their assigned office (get from their user record)
+    if (userRole === "official") {
+      if (userOfficeId) {
+        targetOfficeId = userOfficeId;
+        console.log(
+          `🏢 Official user accessing time series data for their assigned office: ${userOfficeId}`
+        );
+      } else {
+        // If official doesn't have office_id in JWT, fetch from database
+        console.log(`🔍 Fetching office assignment for official from database`);
+        try {
+          const userQuery =
+            "SELECT office_id FROM users WHERE user_id = $1 AND role = 'official'";
+          const userResult = await pool.query(userQuery, [req.user?.user_id]);
+          if (userResult.rows.length > 0 && userResult.rows[0].office_id) {
+            targetOfficeId = userResult.rows[0].office_id;
+            console.log(
+              `✅ Found office assignment for official: ${targetOfficeId}`
+            );
+          } else {
+            console.error(`❌ Official has no office assignment`);
+            return res.status(400).json({
+              status: "error",
+              message:
+                "Official user has no office assignment. Please contact administrator.",
+            });
+          }
+        } catch (err) {
+          console.error("Error fetching official's office assignment:", err);
+          return res.status(500).json({
+            status: "error",
+            message: "Error retrieving office assignment",
+          });
+        }
+      }
     } else if (userRole === "admin") {
       // Admins can see data for any office or all offices
       targetOfficeId = requestedOfficeId;
+      console.log(
+        `👑 Admin user accessing time series data for office: ${
+          targetOfficeId || "all offices"
+        }`
+      );
     }
 
     console.log(
@@ -581,17 +705,46 @@ export const generateReport = async (
     // Determine which office data to include in report based on user role and permissions
     let officeId: string | undefined = requestedOfficeId;
 
-    // If user is an official, they can only generate reports for their assigned office
-    if (userRole === "official" && userOfficeId) {
-      officeId = userOfficeId;
-      console.log(
-        `Official user generating report for their office: ${userOfficeId}`
-      );
+    // For officials, automatically use their assigned office (get from their user record)
+    if (userRole === "official") {
+      if (userOfficeId) {
+        officeId = userOfficeId;
+        console.log(
+          `🏢 Official user generating report for their assigned office: ${userOfficeId}`
+        );
+      } else {
+        // If official doesn't have office_id in JWT, fetch from database
+        console.log(`🔍 Fetching office assignment for official from database`);
+        try {
+          const userQuery =
+            "SELECT office_id FROM users WHERE user_id = $1 AND role = 'official'";
+          const userResult = await pool.query(userQuery, [req.user?.user_id]);
+          if (userResult.rows.length > 0 && userResult.rows[0].office_id) {
+            officeId = userResult.rows[0].office_id;
+            console.log(`✅ Found office assignment for official: ${officeId}`);
+          } else {
+            console.error(`❌ Official has no office assignment`);
+            return res.status(400).json({
+              status: "error",
+              message:
+                "Official user has no office assignment. Please contact administrator.",
+            });
+          }
+        } catch (err) {
+          console.error("Error fetching official's office assignment:", err);
+          return res.status(500).json({
+            status: "error",
+            message: "Error retrieving office assignment",
+          });
+        }
+      }
     } else if (userRole === "admin") {
       // Admins can generate reports for any office or all offices
       officeId = requestedOfficeId;
       console.log(
-        `Admin user generating report for office: ${officeId || "all offices"}`
+        `👑 Admin user generating report for office: ${
+          officeId || "all offices"
+        }`
       );
     }
 
@@ -613,16 +766,35 @@ export const generateReport = async (
     let officeName = "All Government Offices";
     if (officeId) {
       try {
-        const officeQuery =
-          "SELECT office_name FROM offices WHERE office_id = $1";
+        console.log(`🔍 Fetching office name for office ID: ${officeId}`);
+        const officeQuery = "SELECT name FROM offices WHERE office_id = $1";
         const officeResult = await pool.query(officeQuery, [officeId]);
         if (officeResult.rows.length > 0) {
-          officeName = officeResult.rows[0].office_name;
+          officeName = officeResult.rows[0].name;
+          console.log(
+            `✅ Found office name: "${officeName}" for ID: ${officeId}`
+          );
+        } else {
+          console.warn(
+            `⚠️ No office found with ID: ${officeId}, using default name`
+          );
         }
       } catch (err) {
-        console.error("Error fetching office name:", err);
+        console.error("❌ Error fetching office name:", err);
       }
+    } else {
+      console.log(
+        "📊 No specific office ID provided, generating report for all offices"
+      );
     }
+
+    // Validate that we have a proper office name
+    if (!officeName || officeName.trim() === "") {
+      officeName = "Government Office";
+      console.warn("⚠️ Office name was empty, using fallback name");
+    }
+
+    console.log(`📋 Final office name for report: "${officeName}"`);
 
     // Get sentiment data for the specified date range
     const sentimentData = await getSentimentDataForReport(
