@@ -31,7 +31,6 @@
     "noErrorTruncation": true,
     "allowUmdGlobalAccess": true,
     "moduleResolution": "node",
-    "types": ["node"],
     "typeRoots": ["node_modules/@types"],
     "noResolve": false,
     "noLib": false,
@@ -41,8 +40,7 @@
     "removeComments": false,
     "noEmit": false,
     "noEmitOnError": false,
-    "preserveConstEnums": true,
-    "suppressOutputPathCheck": true
+    "preserveConstEnums": true
   },
   "include": ["src/**/*"],
   "exclude": ["node_modules", "**/*.test.ts"],
