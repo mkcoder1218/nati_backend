@@ -4,24 +4,31 @@
 declare global {
   // Force unknown to be any everywhere
   type unknown = any;
-  
+
   // Override all built-in types
   interface Object {
     [key: string]: any;
     response: any;
     message: any;
   }
-  
+
   interface Array<T> {
     [key: string]: any;
+    reduce<U = any>(callbackfn: any, initialValue?: any): any;
+    map<U = any>(callbackfn: any, thisArg?: any): any;
+    filter<S = any>(predicate: any, thisArg?: any): any;
+    find<S = any>(predicate: any, thisArg?: any): any;
+    forEach<U = any>(callbackfn: any, thisArg?: any): any;
+    some<U = any>(predicate: any, thisArg?: any): any;
+    every<U = any>(predicate: any, thisArg?: any): any;
   }
-  
+
   // Make all functions accept type arguments
   interface Function {
     <T>(...args: any[]): any;
     (...args: any[]): any;
   }
-  
+
   // Override Error to have any properties
   interface Error {
     [key: string]: any;

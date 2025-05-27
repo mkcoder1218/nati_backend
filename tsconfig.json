@@ -20,6 +20,7 @@
     "allowUnusedLabels": true,
     "allowSyntheticDefaultImports": true,
     "esModuleInterop": true,
+    "suppressExcessPropertyErrors": false,
     "skipLibCheck": true,
     "forceConsistentCasingInFileNames": false,
     "resolveJsonModule": true,

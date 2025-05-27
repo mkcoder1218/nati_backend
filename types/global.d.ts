@@ -129,6 +129,13 @@ declare global {
 
   interface Array<T> {
     [key: string]: any;
+    reduce<U = any>(...args: any[]): any;
+    map<U = any>(...args: any[]): any;
+    filter<S = any>(...args: any[]): any;
+    find<S = any>(...args: any[]): any;
+    forEach<U = any>(...args: any[]): any;
+    some<U = any>(...args: any[]): any;
+    every<U = any>(...args: any[]): any;
   }
 
   var unknown: any;
