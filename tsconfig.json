@@ -14,6 +14,8 @@
     "noFallthroughCasesInSwitch": false,
     "noUncheckedIndexedAccess": false,
     "exactOptionalPropertyTypes": false,
+    "noImplicitUseStrict": false,
+    "noStrictGenericChecks": false,
     "allowUnreachableCode": true,
     "allowUnusedLabels": true,
     "allowSyntheticDefaultImports": true,
@@ -25,8 +27,11 @@
     "useUnknownInCatchVariables": false,
     "noImplicitOverride": false,
     "allowJs": true,
-    "checkJs": false
+    "checkJs": false,
+    "noErrorTruncation": true,
+    "allowUmdGlobalAccess": true
   },
   "include": ["src/**/*"],
-  "exclude": ["node_modules", "**/*.test.ts"]
+  "exclude": ["node_modules", "**/*.test.ts"],
+  "compileOnSave": false
 }
