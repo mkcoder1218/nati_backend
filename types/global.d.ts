@@ -18,7 +18,13 @@ declare module "path" {
 
 // Declare common Node.js modules
 declare module "pg" {
+  export interface Pool {
+    [key: string]: any;
+  }
   export const Pool: any;
+  export interface Client {
+    [key: string]: any;
+  }
   export const Client: any;
   export default any;
 }
@@ -62,6 +68,9 @@ declare module "express" {
 declare module "jsonwebtoken" {
   export const sign: any;
   export const verify: any;
+  export interface SignOptions {
+    [key: string]: any;
+  }
   export const SignOptions: any;
   export default any;
 }
@@ -174,6 +183,9 @@ declare global {
 
   // Override built-in types to be more permissive
   type unknown = any;
+
+  // Global variable to override unknown
+  var unknown: any;
 
   // Make Number constructor callable
   interface NumberConstructor {
