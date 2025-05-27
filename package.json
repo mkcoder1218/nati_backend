@@ -7,6 +7,7 @@
     "start": "node dist/index.js",
     "dev": "nodemon src/index.ts",
     "build": "tsc",
+    "vercel-build": "npm run build",
     "migrate": "ts-node src/db/migrate.ts",
     "migrate:run": "node run-migrations.js",
     "setup-db": "ts-node src/db/setup-db.ts",

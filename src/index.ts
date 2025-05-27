@@ -143,7 +143,12 @@ app.post("/api/test/office-vote/:officeId", authenticateJWT, (req, res) => {
 // Error handling middleware
 app.use(errorHandler);
 
-// Start server
-app.listen(PORT, () => {
-  console.log(`Server running on port ${PORT}`);
-});
+// Start server (only in development)
+if (process.env.NODE_ENV !== "production") {
+  app.listen(PORT, () => {
+    console.log(`Server running on port ${PORT}`);
+  });
+}
+
+// Export the Express app for Vercel
+export default app;
