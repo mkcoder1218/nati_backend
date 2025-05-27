@@ -187,6 +187,20 @@ declare global {
   // Global variable to override unknown
   var unknown: any;
 
+  // Override all function types to accept type arguments
+  interface Function {
+    <T = any>(...args: any[]): any;
+    (...args: any[]): any;
+    [key: string]: any;
+  }
+
+  // Make all calls work with type arguments
+  interface CallableFunction {
+    <T = any>(...args: any[]): any;
+    (...args: any[]): any;
+    [key: string]: any;
+  }
+
   // Make Number constructor callable
   interface NumberConstructor {
     (...args: any[]): any;

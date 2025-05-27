@@ -32,6 +32,8 @@
     "allowUmdGlobalAccess": true,
     "moduleResolution": "node",
     "typeRoots": ["node_modules/@types", "./types"],
+    "maxNodeModuleJsDepth": 0,
+    "disableSizeLimit": true,
     "noResolve": false,
     "noLib": false,
     "declaration": false,
@@ -51,9 +53,12 @@
   "ts-node": {
     "transpileOnly": true,
     "skipIgnore": true,
+    "typeCheck": false,
     "compilerOptions": {
       "module": "commonjs",
-      "skipLibCheck": true
+      "skipLibCheck": true,
+      "noImplicitAny": false,
+      "strict": false
     }
   }
 }
