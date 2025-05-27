@@ -8,6 +8,7 @@
     "dev": "nodemon src/index.ts",
     "build": "tsc",
     "vercel-build": "npm run build",
+    "render-build": "npm ci && npm run build && ls -la dist/",
     "migrate": "ts-node src/db/migrate.ts",
     "migrate:run": "node run-migrations.js",
     "setup-db": "ts-node src/db/setup-db.ts",
