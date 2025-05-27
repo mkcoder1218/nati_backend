@@ -26,7 +26,8 @@
     "db:switch-neon": "node switch-database.js neon",
     "db:switch-local": "node switch-database.js local",
     "db:switch-auto": "node switch-database.js auto",
-    "db:status": "node switch-database.js status"
+    "db:status": "node switch-database.js status",
+    "build-force": "node build-force.js"
   },
   "dependencies": {
     "@types/fs-extra": "^11.0.4",
