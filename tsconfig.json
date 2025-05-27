@@ -2,7 +2,7 @@
   "compilerOptions": {
     "target": "ES2020",
     "module": "commonjs",
-    "lib": ["ES2020", "DOM", "DOM.Iterable"],
+    "lib": ["ES2020", "DOM", "DOM.Iterable", "ES6"],
     "outDir": "./dist",
     "rootDir": "./src",
     "strict": false,
@@ -31,7 +31,7 @@
     "noErrorTruncation": true,
     "allowUmdGlobalAccess": true,
     "moduleResolution": "node",
-    "typeRoots": ["node_modules/@types"],
+    "typeRoots": ["node_modules/@types", "./types"],
     "noResolve": false,
     "noLib": false,
     "declaration": false,
@@ -40,15 +40,20 @@
     "removeComments": false,
     "noEmit": false,
     "noEmitOnError": false,
-    "preserveConstEnums": true
+    "preserveConstEnums": true,
+    "isolatedModules": false,
+    "experimentalDecorators": true,
+    "emitDecoratorMetadata": true
   },
-  "include": ["src/**/*"],
+  "include": ["src/**/*", "types/**/*"],
   "exclude": ["node_modules", "**/*.test.ts"],
   "compileOnSave": false,
   "ts-node": {
     "transpileOnly": true,
+    "skipIgnore": true,
     "compilerOptions": {
-      "module": "commonjs"
+      "module": "commonjs",
+      "skipLibCheck": true
     }
   }
 }
