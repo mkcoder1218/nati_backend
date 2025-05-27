@@ -58,9 +58,9 @@ export const analyzeSentimentWithGemini = async (
 ): Promise<AIReport> => {
   try {
     // Check if API key is configured
-    if (!GEMINI_API_KEY) {
+    if (!GEMINI_API_KEY || GEMINI_API_KEY.trim() === "") {
       console.warn(
-        "❌ Gemini API key is not configured. Using fallback report generation with REAL data."
+        "❌ Gemini API key is not configured or empty. Using fallback report generation with REAL data."
       );
       return generateFallbackReport(data);
     }
@@ -68,21 +68,32 @@ export const analyzeSentimentWithGemini = async (
     console.log(
       "✅ Gemini API key is configured. Attempting to call Gemini AI..."
     );
-    console.log("📊 Data being sent to Gemini:", {
+    console.log("📊 Office-specific data being sent to Gemini:", {
+      officeName: data.officeName,
       total: data.total,
       positive: data.positive,
       negative: data.negative,
       neutral: data.neutral,
       topIssuesCount: data.topIssues?.length || 0,
       reviewSamplesCount: data.reviewSamples?.length || 0,
+      dateRange: data.dateRange,
     });
+
+    // Validate that we have meaningful data to analyze
+    if (data.total === 0) {
+      console.log(
+        "⚠️ No review data available for analysis. Using fallback report."
+      );
+      return generateFallbackReport(data);
+    }
 
     console.log("Creating prompt for Gemini AI...");
     // Create a prompt for Gemini AI
     const prompt = createGeminiPrompt(data);
+    console.log("📝 Prompt length:", prompt.length, "characters");
 
     console.log("Calling Gemini API...");
-    // Call Gemini API
+    // Call Gemini API with timeout and better error handling
     const response = await axios.post(
       `${GEMINI_API_URL}?key=${GEMINI_API_KEY}`,
       {
@@ -100,6 +111,12 @@ export const analyzeSentimentWithGemini = async (
           topK: 40,
           topP: 0.95,
           maxOutputTokens: 8192,
+        },
+      },
+      {
+        timeout: 30000, // 30 second timeout
+        headers: {
+          "Content-Type": "application/json",
         },
       }
     );
@@ -128,27 +145,46 @@ export const analyzeSentimentWithGemini = async (
     console.log("Parsing Gemini response...");
     return parseGeminiResponse(aiResponse);
   } catch (error: unknown) {
-    console.error("Error calling Gemini AI:", error);
+    console.error("❌ Error calling Gemini AI:", error);
 
     if (axios.isAxiosError(error)) {
-      console.error("Axios error details:", {
+      console.error("🔍 Axios error details:", {
         status: error.response?.status,
+        statusText: error.response?.statusText,
         data: error.response?.data,
         message: error.message,
+        url: error.config?.url,
+        timeout:
+          error.code === "ECONNABORTED" ? "Request timed out" : "No timeout",
       });
+
+      // Specific error handling for common Gemini API issues
+      if (error.response?.status === 400) {
+        console.error("🚫 Bad Request - Check API key and request format");
+      } else if (error.response?.status === 403) {
+        console.error(
+          "🔐 Forbidden - API key may be invalid or quota exceeded"
+        );
+      } else if (error.response?.status === 429) {
+        console.error("⏰ Rate Limited - Too many requests to Gemini API");
+      } else if (error.response?.status >= 500) {
+        console.error("🔧 Server Error - Gemini API is experiencing issues");
+      }
     } else if (error instanceof Error) {
-      console.error("Error message:", error.message);
+      console.error("💥 Error message:", error.message);
+      console.error("📍 Error stack:", error.stack);
     }
 
     // Return a fallback report if the API call fails
     console.log(
-      "⚠️ Gemini API call failed. Using fallback report generation with REAL data..."
+      "🔄 Gemini API call failed. Using fallback report generation with REAL office-specific data..."
     );
-    console.log("📊 Fallback will use real data:", {
+    console.log("📊 Fallback will use real data for office:", data.officeName, {
       total: data.total,
       positive: data.positive,
       negative: data.negative,
       neutral: data.neutral,
+      topIssues: data.topIssues?.length || 0,
     });
     return generateFallbackReport(data);
   }
@@ -334,38 +370,71 @@ const generateFallbackReport = (data: SentimentData): AIReport => {
   // Check if we have real data or empty data
   if (total === 0) {
     return {
-      summary:
-        "No feedback data is available for the selected time period. This may indicate that no reviews have been submitted, or the reviews have not yet been approved for analysis.",
+      summary: `No feedback data is available for ${
+        officeName || "the selected office"
+      } during the period from ${dateRange.startDate} to ${
+        dateRange.endDate
+      }. This office-specific report indicates that no reviews have been submitted for this particular office, or the reviews have not yet been approved for analysis.`,
       keyInsights: [
-        "No citizen feedback data available for analysis",
-        "Consider encouraging more citizen participation in feedback collection",
-        "Review the feedback collection and approval process",
+        `No citizen feedback data available for ${officeName || "this office"}`,
+        `${
+          officeName || "This office"
+        } may benefit from increased citizen engagement initiatives`,
+        "Review the feedback collection and approval process for this specific office",
+        "Consider office-specific outreach programs to encourage feedback",
       ],
       recommendations: [
-        "Implement outreach programs to encourage citizen feedback",
-        "Review and streamline the feedback approval process",
-        "Consider alternative feedback collection methods",
+        `Implement targeted outreach programs for ${
+          officeName || "this office"
+        } to encourage citizen feedback`,
+        `Review and streamline the feedback approval process specifically for ${
+          officeName || "this office"
+        }`,
+        `Consider alternative feedback collection methods tailored to ${
+          officeName || "this office"
+        }'s services`,
+        `Establish regular community engagement sessions for ${
+          officeName || "this office"
+        }`,
       ],
-      trendAnalysis:
-        "No trend data available due to insufficient feedback volume.",
-      fullAnalysis:
-        "A comprehensive analysis cannot be performed without sufficient feedback data. Focus on increasing citizen engagement and feedback collection.",
+      trendAnalysis: `No trend data available for ${
+        officeName || "this office"
+      } due to insufficient feedback volume during the selected period.`,
+      fullAnalysis: `A comprehensive analysis cannot be performed for ${
+        officeName || "this office"
+      } without sufficient feedback data. This office-specific report focuses exclusively on ${
+        officeName || "the selected office"
+      } and contains no data from other government offices. To improve data availability, focus on increasing citizen engagement and feedback collection specifically for ${
+        officeName || "this office"
+      }.`,
     };
   }
 
-  // Generate a detailed executive summary using REAL data
+  // Generate a detailed executive summary using REAL office-specific data
   const summary = `
-Analysis of ${total} citizen reviews for ${
-    officeName || "the government office"
+Office-Specific Analysis for ${
+    officeName || "Government Office"
+  }: This report contains data exclusively for ${
+    officeName || "the selected office"
+  } and includes no information from other government offices.
+
+Analysis of ${total} citizen reviews submitted specifically to ${
+    officeName || "this government office"
   } from ${dateRange.startDate} to ${
     dateRange.endDate
-  } reveals important insights into service delivery performance. The sentiment breakdown shows ${positivePercentage}% positive feedback, ${neutralPercentage}% neutral responses, and ${negativePercentage}% negative experiences.
+  } reveals important insights into ${
+    officeName || "the office"
+  }'s service delivery performance. The sentiment breakdown for ${
+    officeName || "this office"
+  } shows ${positivePercentage}% positive feedback, ${neutralPercentage}% neutral responses, and ${negativePercentage}% negative experiences.
 
 ${
   topIssues.length > 0
-    ? `The most frequently mentioned concern was "${topIssueCategory}" which appeared in ${
+    ? `For ${
+        officeName || "this office"
+      }, the most frequently mentioned concern was "${topIssueCategory}" which appeared in ${
         topIssues[0]?.percentage || 0
-      }% of all feedback. ${
+      }% of all feedback submitted to this specific office. ${
         topIssues.length > 1
           ? `This was followed by "${secondIssueCategory}" at ${
               topIssues[1]?.percentage || 0
@@ -375,15 +444,25 @@ ${
         topIssues.length > 2
           ? ` and "${thirdIssueCategory}" at ${topIssues[2]?.percentage || 0}%`
           : ""
-      }. These categories represent the primary areas where citizens are experiencing challenges.`
-    : "No specific issue categories were identified in the feedback data."
+      }. These categories represent the primary areas where citizens are experiencing challenges specifically with ${
+        officeName || "this office"
+      }'s services.`
+    : `No specific issue categories were identified in the feedback data for ${
+        officeName || "this office"
+      }.`
 }
 
 ${
   positivePercentage > negativePercentage
-    ? `With ${positivePercentage}% positive sentiment, the overall feedback indicates citizen satisfaction with services, though the ${negativePercentage}% negative feedback highlights areas for continued improvement.`
-    : `The ${negativePercentage}% negative sentiment indicates significant opportunities for service enhancement, requiring focused attention on the identified issues.`
-} This analysis provides data-driven insights to guide service improvement initiatives.
+    ? `With ${positivePercentage}% positive sentiment, the overall feedback indicates citizen satisfaction with ${
+        officeName || "this office"
+      }'s services, though the ${negativePercentage}% negative feedback highlights areas for continued improvement at this specific office.`
+    : `The ${negativePercentage}% negative sentiment indicates significant opportunities for service enhancement at ${
+        officeName || "this office"
+      }, requiring focused attention on the identified issues specific to this office.`
+} This office-specific analysis provides data-driven insights to guide service improvement initiatives exclusively for ${
+    officeName || "this office"
+  }.
   `.trim();
 
   // Generate key insights based on REAL data
