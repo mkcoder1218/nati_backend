@@ -79,6 +79,44 @@ export const analyzeSentimentWithGemini = async (
       dateRange: data.dateRange,
     });
 
+    // Log the exact office name being used in the prompt
+    console.log(
+      `🏢 Exact office name being sent to Gemini: "${data.officeName}"`
+    );
+    console.log(
+      `📝 Prompt will instruct Gemini to use: "${
+        data.officeName || "the government office"
+      }"`
+    );
+
+    // Validate office name is not generic
+    if (!data.officeName || data.officeName === "All Government Offices") {
+      console.warn(
+        `⚠️ WARNING: Generic office name detected: "${data.officeName}"`
+      );
+      console.warn(
+        "This may result in generic AI responses instead of office-specific ones"
+      );
+    } else {
+      console.log(`✅ Specific office name confirmed: "${data.officeName}"`);
+    }
+
+    // Create the prompt
+    const prompt = createGeminiPrompt(data);
+    console.log(
+      "📋 Generated prompt preview (first 500 chars):",
+      prompt.substring(0, 500) + "..."
+    );
+    console.log(
+      `🎯 Office name appears ${
+        (
+          prompt.match(
+            new RegExp(data.officeName || "the government office", "g")
+          ) || []
+        ).length
+      } times in the prompt`
+    );
+
     // Validate that we have meaningful data to analyze
     if (data.total === 0) {
       console.log(
@@ -87,9 +125,7 @@ export const analyzeSentimentWithGemini = async (
       return generateFallbackReport(data);
     }
 
-    console.log("Creating prompt for Gemini AI...");
-    // Create a prompt for Gemini AI
-    const prompt = createGeminiPrompt(data);
+    console.log("Using previously created prompt for Gemini AI...");
     console.log("📝 Prompt length:", prompt.length, "characters");
 
     console.log("Calling Gemini API...");
@@ -142,8 +178,44 @@ export const analyzeSentimentWithGemini = async (
 
     // Parse the response
     const aiResponse = response.data.candidates[0].content.parts[0].text;
+    console.log("✅ Gemini API call successful");
+    console.log("📄 Response length:", aiResponse.length, "characters");
+
+    // Check if the response contains the specific office name
+    const officeName = data.officeName || "the government office";
+    const officeNameCount = (
+      aiResponse.match(new RegExp(officeName, "gi")) || []
+    ).length;
+    console.log(
+      `🏢 Office name "${officeName}" appears ${officeNameCount} times in Gemini response`
+    );
+
+    // Log a preview of the response to verify office name usage
+    console.log(
+      "📋 Gemini response preview (first 300 chars):",
+      aiResponse.substring(0, 300) + "..."
+    );
+
     console.log("Parsing Gemini response...");
-    return parseGeminiResponse(aiResponse);
+    const aiReport = parseGeminiResponse(aiResponse);
+    console.log("📊 Parsed AI report sections:", Object.keys(aiReport));
+
+    // Verify the summary contains the office name
+    if (aiReport.summary && officeName !== "the government office") {
+      const summaryContainsOfficeName = aiReport.summary
+        .toLowerCase()
+        .includes(officeName.toLowerCase());
+      console.log(
+        `✅ Summary contains office name "${officeName}": ${summaryContainsOfficeName}`
+      );
+      if (!summaryContainsOfficeName) {
+        console.warn(
+          `⚠️ WARNING: Gemini response summary does not contain the specific office name "${officeName}"`
+        );
+      }
+    }
+
+    return aiReport;
   } catch (error: unknown) {
     console.error("❌ Error calling Gemini AI:", error);
 
@@ -212,71 +284,83 @@ const createGeminiPrompt = (data: SentimentData): string => {
   const neutralPercentage = Math.round((neutral / total) * 100);
   const negativePercentage = Math.round((negative / total) * 100);
 
-  // Format the prompt
-  return `
-You are an expert government service analyst. Analyze the following sentiment data from citizen feedback about ${
-    officeName || "a government office"
-  } for the period from ${dateRange.startDate} to ${dateRange.endDate}.
+  // Ensure we have a specific office name
+  const specificOfficeName = officeName || "the government office";
 
-SENTIMENT BREAKDOWN:
+  // Format the prompt with strong emphasis on using the exact office name
+  return `
+You are an expert government service analyst. Analyze the following sentiment data from citizen feedback about "${specificOfficeName}" for the period from ${
+    dateRange.startDate
+  } to ${dateRange.endDate}.
+
+IMPORTANT INSTRUCTIONS:
+- This report is EXCLUSIVELY for "${specificOfficeName}" - use this EXACT office name throughout your analysis
+- Do NOT use generic terms like "the office", "government office", or "all offices"
+- ALWAYS refer to "${specificOfficeName}" by its exact name
+- This data contains NO information from other government offices
+- Focus specifically on "${specificOfficeName}" in all sections of your response
+
+OFFICE-SPECIFIC DATA FOR "${specificOfficeName}":
 - Positive feedback: ${positive} (${positivePercentage}%)
 - Neutral feedback: ${neutral} (${neutralPercentage}%)
 - Negative feedback: ${negative} (${negativePercentage}%)
-- Total reviews: ${total}
+- Total reviews for "${specificOfficeName}": ${total}
 
-TOP ISSUES MENTIONED:
+TOP ISSUES MENTIONED SPECIFICALLY FOR "${specificOfficeName}":
 ${topIssues
   .map(
     (issue) =>
-      `- ${issue.issue}: ${issue.count} mentions (${issue.percentage}%)`
+      `- ${issue.issue}: ${issue.count} mentions (${issue.percentage}%) at "${specificOfficeName}"`
   )
   .join("\n")}
 
 ${
   reviewSamples && reviewSamples.length > 0
     ? `
-SAMPLE REVIEWS:
+SAMPLE REVIEWS FROM CITIZENS ABOUT "${specificOfficeName}":
 ${reviewSamples
   .map(
     (review) =>
       `- "${review.text}" (Sentiment: ${review.sentiment}${
         review.category ? `, Category: ${review.category}` : ""
-      })`
+      }) - Review about "${specificOfficeName}"`
   )
   .join("\n")}
 `
     : ""
 }
 
-Based on this data, please provide:
-1. A concise executive summary (2-3 paragraphs)
-2. 4-5 key insights from the data
-3. 3-4 specific, actionable recommendations for improvement
-4. A brief trend analysis comparing positive vs negative sentiment
-5. A comprehensive analysis of the feedback (about 300-400 words)
+Based on this office-specific data for "${specificOfficeName}", please provide:
+1. A concise executive summary (2-3 paragraphs) - MUST mention "${specificOfficeName}" by name
+2. 4-5 key insights from the data - MUST reference "${specificOfficeName}" specifically
+3. 3-4 specific, actionable recommendations for "${specificOfficeName}"
+4. A brief trend analysis for "${specificOfficeName}" comparing positive vs negative sentiment
+5. A comprehensive analysis of the feedback for "${specificOfficeName}" (about 300-400 words)
+
+CRITICAL: In every section, you MUST use the exact office name "${specificOfficeName}" instead of generic terms.
 
 Format your response as follows:
 SUMMARY:
-[Your executive summary]
+[Your executive summary about "${specificOfficeName}"]
 
 KEY_INSIGHTS:
-- [Insight 1]
-- [Insight 2]
-- [Insight 3]
-- [Insight 4]
-- [Insight 5]
+- [Insight 1 about "${specificOfficeName}"]
+- [Insight 2 about "${specificOfficeName}"]
+- [Insight 3 about "${specificOfficeName}"]
+- [Insight 4 about "${specificOfficeName}"]
+- [Insight 5 about "${specificOfficeName}"]
 
 RECOMMENDATIONS:
-- [Recommendation 1]
-- [Recommendation 2]
-- [Recommendation 3]
-- [Recommendation 4]
+- [Recommendation 1 for "${specificOfficeName}"]
+- [Recommendation 2 for "${specificOfficeName}"]
+- [Recommendation 3 for "${specificOfficeName}"]
+- [Recommendation 4 for "${specificOfficeName}"]
 
 TREND_ANALYSIS:
-[Your trend analysis]
+[Your trend analysis for "${specificOfficeName}"]
 
 FULL_ANALYSIS:
-[Your comprehensive analysis]
+[Your comprehensive analysis of "${specificOfficeName}"]
 `;
 };
 
