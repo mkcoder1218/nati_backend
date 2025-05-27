@@ -7,7 +7,7 @@ interface AuthenticatedRequest extends Request {
 
 // Get admin dashboard statistics
 export const getDashboardStats = async (
-  req: AuthenticatedRequest,
+  _req: AuthenticatedRequest,
   res: Response
 ) => {
   try {
@@ -95,8 +95,8 @@ export const getDashboardStats = async (
 
     // Get user details for activities that have user_id
     const userIds = recentActivityResult.rows
-      .filter((activity) => activity.user_id)
-      .map((activity) => activity.user_id);
+      .filter((activity: any) => activity.user_id)
+      .map((activity: any) => activity.user_id);
 
     // Define the user type
     interface UserDetail {
@@ -115,17 +115,14 @@ export const getDashboardStats = async (
         [userIds]
       );
 
-      userMap = usersDetailResult.rows.reduce<Record<string, UserDetail>>(
-        (map, user) => {
-          map[user.user_id] = user;
-          return map;
-        },
-        {}
-      );
+      userMap = usersDetailResult.rows.reduce((map: any, user: any) => {
+        map[user.user_id] = user;
+        return map;
+      }, {} as any);
     }
 
     // Format recent activity
-    const recentActivity = recentActivityResult.rows.map((activity) => {
+    const recentActivity = recentActivityResult.rows.map((activity: any) => {
       const formattedActivity = {
         type: activity.activity_type,
         title: activity.title,
@@ -241,7 +238,7 @@ export const getDashboardStats = async (
 };
 
 // Get system health status
-export const getSystemHealth = async (req: Request, res: Response) => {
+export const getSystemHealth = async (_req: Request, res: Response) => {
   try {
     // Check database connection
     const dbResult = await pool.query("SELECT NOW()");
