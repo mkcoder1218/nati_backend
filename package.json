@@ -4,14 +4,14 @@
   "description": "Backend for Government Service Feedback System",
   "main": "dist/index.js",
   "scripts": {
-    "start": "node start.js",
-    "start-direct": "node dist/index.js",
-    "dev": "nodemon src/index.ts",
-    "build": "tsc",
+    "start": "node init && node start.js",
+    "start-direct": "node init && node dist/index.js",
+    "dev": "node init && nodemon src/index.ts",
+    "build": "node init && tsc",
     "vercel-build": "npm run build",
     "render-build": "chmod +x build.sh && ./build.sh",
-    "build:production": "npm install --production=false && npm run build",
-    "build:clean": "rm -rf node_modules dist && npm install && npm run build",
+    "build:production": "node init && npm install --production=false && npm run build",
+    "build:clean": "node init && rm -rf node_modules dist && npm install && npm run build",
     "migrate": "ts-node src/db/migrate.ts",
     "migrate:run": "node run-migrations.js",
     "setup-db": "ts-node src/db/setup-db.ts",
@@ -30,7 +30,7 @@
     "db:switch-local": "node switch-database.js local",
     "db:switch-auto": "node switch-database.js auto",
     "db:status": "node switch-database.js status",
-    "build-force": "node build-force.js"
+    "build-force": "node init && node build-force.js"
   },
   "dependencies": {
     "@types/fs-extra": "^11.0.4",
